@@ -433,7 +433,11 @@ def rewrite_html_assets(soup: BeautifulSoup, asset_path_by_url: dict[str, str]) 
 
 
 def rewrite_raw_asset_urls(index_html: str, asset_path_by_url: dict[str, str]) -> str:
-    for original_url, asset_path in asset_path_by_url.items():
+    # Longest-first so a bare URL (e.g. "http://cdn/img") never clobbers the
+    # middle of a longer URL that starts with the same prefix
+    # (e.g. "http://cdn/img/logo.png"), leaving the path half-rewritten.
+    for original_url in sorted(asset_path_by_url, key=len, reverse=True):
+        asset_path = asset_path_by_url[original_url]
         index_html = index_html.replace(original_url, asset_path)
         index_html = index_html.replace(original_url.replace("/", "\\/"), asset_path)
     return index_html

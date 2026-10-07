@@ -870,10 +870,17 @@ class AgentRunRecorder:
 
         # The same file can be referenced under several URL forms (with and
         # without a host prefix); copy it once and point every form at it.
+        asset_root = os.path.abspath(LOCAL_ASSET_DIR)
         copied_local: dict[str, str] = {}
         for url in dict.fromkeys(_LOCAL_ASSET_URL_RE.findall(final_html)):
             filename = unquote(url.split("/local-assets/", 1)[1])
-            source_path = os.path.join(LOCAL_ASSET_DIR, filename)
+            source_path = os.path.abspath(os.path.join(asset_root, filename))
+            # Defend against path traversal: filenames containing ".." must not
+            # resolve outside LOCAL_ASSET_DIR (mirrors local_asset_url_to_bytes).
+            if not source_path.startswith(asset_root + os.sep):
+                entry: dict[str, Any] = {"url": url, "kind": "local", "status": "missing"}
+                manifest.append(entry)
+                continue
             entry: dict[str, Any] = {"url": url, "kind": "local"}
             if filename in copied_local:
                 saved_name = copied_local[filename]
